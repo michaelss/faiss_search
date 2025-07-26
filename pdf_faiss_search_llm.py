@@ -22,6 +22,7 @@ try:
     from langchain.chat_models import AzureChatOpenAI
     from langchain.chains import RetrievalQA
     from langchain.prompts import PromptTemplate
+    from dotenv import load_dotenv
 except ImportError as e:
     print(f"Erro de importação: {e}")
     print("Execute: pip install langchain pypdf sentence-transformers openai")
@@ -370,6 +371,7 @@ class PDFSearchSystem:
             print(f"{'─'*60}")
 
 def main():
+    load_dotenv()
     """Função principal do programa"""
     # Exemplos de PDFs fictícios (substitua pelos seus arquivos reais)
     pdf_files = [
