@@ -12,14 +12,12 @@ from typing import List, Dict, Tuple
 from pathlib import Path
 
 try:
-    import faiss
-    from langchain.document_loaders import PyPDFLoader
+    from langchain_community.document_loaders import PyPDFLoader
     from langchain.text_splitter import RecursiveCharacterTextSplitter
-    from langchain.embeddings import HuggingFaceEmbeddings
-    from langchain.vectorstores import FAISS
+    from langchain_huggingface import HuggingFaceEmbeddings
+    from langchain_community.vectorstores import FAISS
     from langchain.schema import Document
-    from langchain.llms import AzureOpenAI
-    from langchain.chat_models import AzureChatOpenAI
+    from langchain_openai import AzureChatOpenAI
     from langchain.chains import RetrievalQA
     from langchain.prompts import PromptTemplate
     from dotenv import load_dotenv
@@ -29,7 +27,7 @@ except ImportError as e:
     sys.exit(1)
 
 class PDFSearchSystem:
-    def __init__(self, embeddings_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+    def __init__(self, embeddings_model: str = "intfloat/multilingual-e5-large",
                  use_azure_llm: bool = False):
         """
         Inicializa o sistema de busca em PDFs
@@ -50,8 +48,8 @@ class PDFSearchSystem:
         if use_azure_llm:
             self.setup_azure_llm()
         
-    def load_and_split_pdfs(self, pdf_paths: List[str], chunk_size: int = 1000, 
-                           chunk_overlap: int = 200) -> List[Document]:
+    def load_and_split_pdfs(self, pdf_paths: List[str], chunk_size: int = 2000, 
+                           chunk_overlap: int = 400) -> List[Document]:
         """
         Carrega e divide os PDFs em chunks
         
@@ -247,7 +245,8 @@ class PDFSearchSystem:
         
         try:
             # Template personalizado para melhor contexto
-            template = """Use o contexto abaixo para responder à pergunta de forma precisa e detalhada.
+            template = """Use APENAS o contexto abaixo para responder à pergunta de forma precisa. 
+            Reflita sobre a resposta que você preparou a fim de verificar se faz sentido e se tem duplicidades, reformulando-a se necessário.
             Se não conseguir responder com base no contexto fornecido, diga que não tem informações suficientes.
             
             Contexto:
@@ -255,7 +254,7 @@ class PDFSearchSystem:
             
             Pergunta: {question}
             
-            Resposta detalhada:"""
+            Resposta:"""
             
             QA_CHAIN_PROMPT = PromptTemplate(
                 input_variables=["context", "question"],
@@ -373,12 +372,8 @@ class PDFSearchSystem:
 def main():
     load_dotenv()
     """Função principal do programa"""
-    # Exemplos de PDFs fictícios (substitua pelos seus arquivos reais)
-    pdf_files = [
-        "documento1.pdf",  # Ex: Manual de Python
-        "documento2.pdf",  # Ex: Guia de Machine Learning  
-        "documento3.pdf"   # Ex: Documentação de APIs
-    ]
+    pdf_directory = "pdfs"
+    pdf_files = [os.path.join(pdf_directory, f) for f in os.listdir(pdf_directory) if f.endswith(".pdf")]
     
     # Inicializa o sistema
     search_system = PDFSearchSystem(use_azure_llm=True)
