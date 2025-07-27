@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 import validators
 
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -59,17 +59,24 @@ class PDFSearchSystem:
             length_function=len,
         )
 
-        for file_path in file_paths:
-            if not os.path.exists(file_path):
-                print(f"Aviso: Arquivo não encontrado: {file_path}. Pulando...")
+        for dir_path in file_paths:
+            if not os.path.exists(dir_path):
+                print(f"Aviso: Diretório não encontrado: {dir_path}. Pulando...")
                 continue
 
             try:
-                pdf_files = [os.path.join(file_path, f) for f in os.listdir(file_path) if f.lower().endswith(".pdf")]
-                for file_path in pdf_files:
-                    print(f"Carregando PDF: {file_path}")
-                    loader = PyPDFLoader(file_path)
-                    pages = loader.load()
+                for filename in os.listdir(dir_path):
+                    file_path = os.path.join(dir_path, filename)
+                    if filename.lower().endswith(".pdf"):
+                        print(f"Carregando PDF: {file_path}")
+                        loader = PyPDFLoader(file_path)
+                        pages = loader.load()
+                    elif filename.lower().endswith(".txt"):
+                        print(f"Carregando arquivo de texto: {file_path}")
+                        loader = TextLoader(file_path)
+                        pages = loader.load()
+                    else:
+                        continue
 
                     for page in pages:
                         page.metadata['source_file'] = os.path.basename(file_path)
@@ -80,7 +87,7 @@ class PDFSearchSystem:
                     print(f"Processado: {len(chunks)} chunks extraídos")
 
             except Exception as e:
-                print(f"Erro ao processar {file_path}: {e}")
+                print(f"Erro ao processar o diretório {dir_path}: {e}")
                 continue
 
         return documents

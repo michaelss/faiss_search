@@ -5,3 +5,4 @@ __pycache__/
 documents_metadata.pkl
 faiss_index/
 pdfs/
+txts/
