@@ -2,9 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from search_system import PDFSearchSystem
 import uvicorn
-from dotenv import load_dotenv
-
-load_dotenv()
+from core.config import settings
 
 app = FastAPI()
 search_system = PDFSearchSystem(use_azure_llm=True)

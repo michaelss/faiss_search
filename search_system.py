@@ -18,7 +18,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
-import config
+from core.config import settings
 
 class PDFSearchSystem:
     """
@@ -31,11 +31,11 @@ class PDFSearchSystem:
         Args:
             use_azure_llm: Whether to use Azure OpenAI for Q&A.
         """
-        self.embeddings = HuggingFaceEmbeddings(model_name=config.EMBEDDINGS_MODEL)
+        self.embeddings = HuggingFaceEmbeddings(model_name=settings.EMBEDDINGS_MODEL)
         self.vectorstore = None
         self.documents = []
-        self.index_path = config.INDEX_PATH
-        self.metadata_path = config.METADATA_PATH
+        self.index_path = settings.INDEX_PATH
+        self.metadata_path = settings.METADATA_PATH
         self.qa_chain = None
         self.use_azure_llm = use_azure_llm
 
@@ -54,8 +54,8 @@ class PDFSearchSystem:
         """
         documents = []
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=config.CHUNK_SIZE,
-            chunk_overlap=config.CHUNK_OVERLAP,
+            chunk_size=settings.CHUNK_SIZE,
+            chunk_overlap=settings.CHUNK_OVERLAP,
             length_function=len,
         )
 
@@ -104,8 +104,8 @@ class PDFSearchSystem:
         """
         documents = []
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=config.CHUNK_SIZE,
-            chunk_overlap=config.CHUNK_OVERLAP,
+            chunk_size=settings.CHUNK_SIZE,
+            chunk_overlap=settings.CHUNK_OVERLAP,
             length_function=len,
         )
 
@@ -212,7 +212,7 @@ class PDFSearchSystem:
             print("Índice FAISS não encontrado. Por favor, crie um índice primeiro.")
             return False
 
-    def search(self, query: str, k: int = config.SEARCH_K) -> List[Tuple[Document, float]]:
+    def search(self, query: str, k: int = settings.SEARCH_K) -> List[Tuple[Document, float]]:
         """
         Realiza uma busca semântica no índice.
 
@@ -238,24 +238,17 @@ class PDFSearchSystem:
         Configura o Azure OpenAI LLM.
         """
         try:
-            required_vars = [
-                'AZURE_OPENAI_ENDPOINT',
-                'AZURE_OPENAI_API_KEY',
-                'AZURE_OPENAI_DEPLOYMENT_NAME',
-                'AZURE_OPENAI_API_VERSION'
-            ]
-            missing_vars = [var for var in required_vars if not os.getenv(var)]
-            if missing_vars:
-                print(f"Variáveis de ambiente ausentes: {missing_vars}")
+            if not settings.AZURE_OPENAI_ENDPOINT or not settings.AZURE_OPENAI_API_KEY:
+                print("Variáveis de ambiente do Azure OpenAI ausentes.")
                 print("Por favor, configure as variáveis de ambiente do Azure OpenAI.")
                 self.use_azure_llm = False
                 return
 
             self.llm = AzureChatOpenAI(
-                azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT'),
-                api_key=os.getenv('AZURE_OPENAI_API_KEY'),
-                azure_deployment=os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME'),
-                api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
+                azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
+                api_key=settings.AZURE_OPENAI_API_KEY,
+                azure_deployment=settings.AZURE_OPENAI_DEPLOYMENT_NAME,
+                api_version=settings.AZURE_OPENAI_API_VERSION,
                 temperature=0.3,
                 max_tokens=1000
             )
@@ -297,7 +290,7 @@ class PDFSearchSystem:
             
             retriever = self.vectorstore.as_retriever(
                 search_type="similarity",
-                search_kwargs={"k": config.SEARCH_K}
+                search_kwargs={"k": settings.SEARCH_K}
             )
             
             self.qa_chain = RetrievalQA.from_chain_type(

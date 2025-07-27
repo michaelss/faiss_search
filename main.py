@@ -1,7 +1,5 @@
 
-import config
-
-from dotenv import load_dotenv
+from core.config import settings
 
 from search_system import PDFSearchSystem
 from utils import format_results, format_qa_results
@@ -10,7 +8,7 @@ def main():
     """
     Main function of the program.
     """
-    load_dotenv()
+    
     search_system = PDFSearchSystem(use_azure_llm=True)
 
     print("Busca Semântica em PDFs com Azure OpenAI")
@@ -30,7 +28,7 @@ def main():
 
         if choice == "1":
             print("\nCriando novo índice...")
-            sources = config.SOURCES
+            sources = settings.SOURCES
 
             if not sources or all(not s for s in sources):
                 print("\nNenhuma fonte fornecida.")
