@@ -12,17 +12,17 @@ def main():
     Main function of the program.
     """
     load_dotenv()
-    sources_input = os.getenv("SOURCES_INPUT", "")
     search_system = PDFSearchSystem(use_azure_llm=True)
 
     print("Busca Semântica em PDFs com Azure OpenAI")
     print("="*60)
 
+    print("\nCarregando índice existente...")
+    search_system.load_index()
+
     while True:
         print("\nOpções:")
         print("1. Criar novo índice")
-        print("2. Carregar índice existente")
-        print("3. Configurar Azure OpenAI Q&A")
         print("4. Realizar busca simples (similaridade)")
         print("5. Fazer pergunta (Azure OpenAI + RAG)")
         print("6. Sair")
@@ -44,21 +44,8 @@ def main():
             success = search_system.create_index(sources)
             if success:
                 print("Índice criado com sucesso!")
-
-        elif choice == "2":
-            print("\nCarregando índice existente...")
-            search_system.load_index()
-
-        elif choice == "3":
-            print("\nConfigurando Azure OpenAI Q&A...")
-            if search_system.vectorstore:
-                success = search_system.setup_qa_chain()
-                if success:
-                    print("Azure OpenAI Q&A configurado!")
-                else:
-                    print("Falha na configuração. Verifique suas variáveis de ambiente.")
-            else:
-                print("Carregue um índice primeiro (opções 1 ou 2).")
+                print("\nCarregando índice existente...")
+                search_system.load_index()
 
         elif choice == "4":
             if not search_system.vectorstore:
@@ -84,8 +71,14 @@ def main():
 
         elif choice == "5":
             if not search_system.qa_chain:
-                print("\nPor favor, configure o Azure OpenAI Q&A primeiro (opção 3).")
-                continue
+                if search_system.vectorstore:
+                    success = search_system.setup_qa_chain()
+                    if success:
+                        print("Azure OpenAI Q&A configurado!")
+                    else:
+                        print("Falha na configuração. Verifique suas variáveis de ambiente.")
+                else:
+                    print("Carregue um índice primeiro (opções 1 ou 2).")
 
             print("\nModo Pergunta-Resposta com Azure OpenAI")
             print("Digite 'sair' para retornar ao menu principal")
