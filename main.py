@@ -1,6 +1,6 @@
 
 import os
-import sys
+import config
 
 from dotenv import load_dotenv
 
@@ -12,10 +12,7 @@ def main():
     Main function of the program.
     """
     load_dotenv()
-
-    pdf_directory = "pdfs"
-    pdf_files = [os.path.join(pdf_directory, f) for f in os.listdir(pdf_directory) if f.endswith(".pdf")]
-
+    sources_input = os.getenv("SOURCES_INPUT", "")
     search_system = PDFSearchSystem(use_azure_llm=True)
 
     print("Busca Semântica em PDFs com Azure OpenAI")
@@ -34,15 +31,17 @@ def main():
 
         if choice == "1":
             print("\nCriando novo índice...")
-            print("Arquivos a serem indexados:")
-            for pdf in pdf_files:
-                print(f"  - {pdf}")
+            sources = config.SOURCES
 
-            if not pdf_files:
-                print("\nNenhum arquivo PDF encontrado no diretório 'pdfs'.")
+            if not sources or all(not s for s in sources):
+                print("\nNenhuma fonte fornecida.")
                 continue
 
-            success = search_system.create_index(pdf_files)
+            print("Fontes a serem indexadas:")
+            for source in sources:
+                print(f"  - {source}")
+
+            success = search_system.create_index(sources)
             if success:
                 print("Índice criado com sucesso!")
 

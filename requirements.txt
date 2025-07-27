@@ -1,2 +1,11 @@
+beautifulsoup4==4.12.3
+faiss-cpu==1.11.0.post1
+langchain_community==0.3.27
+langchain_huggingface==0.3.1
+langchain-openai==0.3.28
 openai==1.90.0
+pypdf==4.3.1
 python-dotenv==1.1.1
+requests==2.32.3
+sentence_transformers==5.0.0
+validators==0.33.0

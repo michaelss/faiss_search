@@ -1,0 +1,7 @@
+.env
+.venv/
+.vscode/
+__pycache__/
+documents_metadata.pkl
+faiss_index/
+pdfs/

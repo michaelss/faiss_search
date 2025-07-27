@@ -5,6 +5,9 @@ PDF Search System
 import os
 import pickle
 from typing import List, Tuple
+import requests
+from bs4 import BeautifulSoup
+import validators
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -39,12 +42,12 @@ class PDFSearchSystem:
         if self.use_azure_llm:
             self.setup_azure_llm()
 
-    def load_and_split_pdfs(self, pdf_paths: List[str]) -> List[Document]:
+    def load_and_split_files(self, file_paths: List[str]) -> List[Document]:
         """
-        Loads and splits PDFs into chunks.
+        Loads and splits files into chunks.
 
         Args:
-            pdf_paths: A list of paths to the PDF files.
+            file_paths: A list of paths to the files.
 
         Returns:
             A list of Document objects.
@@ -56,45 +59,101 @@ class PDFSearchSystem:
             length_function=len,
         )
 
-        for pdf_path in pdf_paths:
-            if not os.path.exists(pdf_path):
-                print(f"Aviso: Arquivo não encontrado: {pdf_path}. Pulando...")
+        for file_path in file_paths:
+            if not os.path.exists(file_path):
+                print(f"Aviso: Arquivo não encontrado: {file_path}. Pulando...")
                 continue
 
             try:
-                print(f"Carregando PDF: {pdf_path}")
-                loader = PyPDFLoader(pdf_path)
-                pages = loader.load()
+                pdf_files = [os.path.join(file_path, f) for f in os.listdir(file_path) if f.lower().endswith(".pdf")]
+                for file_path in pdf_files:
+                    print(f"Carregando PDF: {file_path}")
+                    loader = PyPDFLoader(file_path)
+                    pages = loader.load()
 
-                for page in pages:
-                    page.metadata['source_file'] = os.path.basename(pdf_path)
-                    page.metadata['full_path'] = pdf_path
+                    for page in pages:
+                        page.metadata['source_file'] = os.path.basename(file_path)
+                        page.metadata['full_path'] = file_path
 
-                chunks = text_splitter.split_documents(pages)
-                documents.extend(chunks)
-                print(f"  Processado: {len(chunks)} chunks extraídos")
+                    chunks = text_splitter.split_documents(pages)
+                    documents.extend(chunks)
+                    print(f"Processado: {len(chunks)} chunks extraídos")
 
             except Exception as e:
-                print(f"Erro ao processar {pdf_path}: {e}")
+                print(f"Erro ao processar {file_path}: {e}")
                 continue
 
         return documents
 
-    def create_index(self, pdf_paths: List[str]) -> bool:
+    def load_and_split_urls(self, urls: List[str]) -> List[Document]:
         """
-        Cria um índice FAISS a partir dos PDFs.
+        Loads and splits content from URLs into chunks.
 
         Args:
-            pdf_paths: Uma lista de caminhos para os arquivos PDF.
+            urls: A list of URLs.
+
+        Returns:
+            A list of Document objects.
+        """
+        documents = []
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=config.CHUNK_SIZE,
+            chunk_overlap=config.CHUNK_OVERLAP,
+            length_function=len,
+        )
+
+        for url in urls:
+            if not validators.url(url):
+                print(f"Aviso: URL inválida: {url}. Pulando...")
+                continue
+
+            try:
+                print(f"Carregando URL: {url}")
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+
+                soup = BeautifulSoup(response.content, 'html.parser')
+                text = soup.get_text()
+
+                doc = Document(page_content=text, metadata={'source': url})
+                chunks = text_splitter.split_documents([doc])
+                documents.extend(chunks)
+                print(f"Processado: {len(chunks)} chunks extraídos")
+
+            except requests.exceptions.RequestException as e:
+                print(f"Erro ao carregar {url}: {e}")
+                continue
+            except Exception as e:
+                print(f"Erro ao processar {url}: {e}")
+                continue
+
+        return documents
+
+    def create_index(self, sources: List[str]) -> bool:
+        """
+        Cria um índice FAISS a partir de arquivos PDF e URLs.
+
+        Args:
+            sources: Uma lista de caminhos para arquivos PDF e URLs.
 
         Returns:
             True se o índice foi criado com sucesso, False caso contrário.
         """
         print("Criando índice FAISS...")
-        self.documents = self.load_and_split_pdfs(pdf_paths)
+
+        pdf_paths = [source for source in sources if not validators.url(source)]
+        urls = [source for source in sources if validators.url(source)]
+
+        documents = []
+        if pdf_paths:
+            documents.extend(self.load_and_split_files(pdf_paths))
+        if urls:
+            documents.extend(self.load_and_split_urls(urls))
+
+        self.documents = documents
 
         if not self.documents:
-            print("Nenhum documento foi carregado. Por favor, verifique os caminhos dos PDFs.")
+            print("Nenhum documento foi carregado. Por favor, verifique as fontes.")
             return False
 
         print(f"Total de chunks processados: {len(self.documents)}")
@@ -263,7 +322,7 @@ class PDFSearchSystem:
 
         try:
             print("Processando pergunta com Azure OpenAI...")
-            result = self.qa_chain({"query": question})
+            result = self.qa_chain.invoke({"query": question})
             return result["result"], result["source_documents"]
         except Exception as e:
             return f"Erro ao processar a pergunta: {e}", []
